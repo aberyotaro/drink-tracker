@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 type DatabaseService struct {
@@ -13,7 +13,7 @@ type DatabaseService struct {
 }
 
 func NewDatabaseService(dbPath string) (*DatabaseService, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
 	}

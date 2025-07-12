@@ -18,6 +18,9 @@ server
 *.sqlite
 *.sqlite3
 
+# Docker
+.dockerignore
+
 # OS
 .DS_Store
 Thumbs.db

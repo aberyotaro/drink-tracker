@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
-	defer dbService.Close()
+	defer func() { _ = dbService.Close() }()
 
 	userService := services.NewUserService(dbService.DB)
 	drinkService := services.NewDrinkService(dbService.DB)
@@ -43,6 +43,9 @@ func main() {
 
 	slackHandler := handlers.NewSlackHandler(slackClient, signingSecret, userService, drinkService)
 
+	e.GET("/health", func(c echo.Context) error {
+		return c.JSON(200, map[string]string{"status": "ok"})
+	})
 	e.POST("/slack/command", slackHandler.HandleSlashCommand)
 
 	port := os.Getenv("PORT")
