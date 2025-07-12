@@ -1,0 +1,9 @@
+sqlite:
+  dsn: "drink_tracker.db"
+output: "internal/models"
+pkgname: "models"
+driver: "sqlite"
+templates:
+  - "models"
+  - "factory"
+wipe: true
