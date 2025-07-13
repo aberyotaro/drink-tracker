@@ -1,10 +1,12 @@
-app = 'drink-tracker'
+# fly.toml app configuration file generated for drink-tracker-qfmxbg on 2025-07-13T06:10:09Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'drink-tracker-qfmxbg'
 primary_region = 'nrt'
 
 [build]
-
-[env]
-  PORT = '8080'
 
 [http_service]
   internal_port = 8080
@@ -18,7 +20,4 @@ primary_region = 'nrt'
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
-
-[mounts]
-  source = 'drink_tracker_data'
-  destination = '/data'
+  memory_mb = 1024
