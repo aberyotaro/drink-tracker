@@ -147,6 +147,7 @@ func (h *SlackHandler) handleDrinkRecord(command slack.SlashCommand, config Drin
 	// データベースに記録
 	_, err = h.drinkService.RecordDrink(ctx, int64(user.ID), config.Name, int64(amountMl), config.AlcoholPercentage)
 	if err != nil {
+		fmt.Printf("DEBUG: RecordDrink error: %v\n", err)
 		return &slack.Msg{
 			Text: "記録の保存に失敗しました。",
 		}
@@ -155,10 +156,13 @@ func (h *SlackHandler) handleDrinkRecord(command slack.SlashCommand, config Drin
 	// 今日の合計を取得
 	totalAlcohol, totalMl, err := h.drinkService.GetTodayTotalAlcohol(ctx, int64(user.ID))
 	if err != nil {
+		fmt.Printf("DEBUG: GetTodayTotalAlcohol error: %v\n", err)
 		return &slack.Msg{
 			Text: "統計情報の取得に失敗しました。",
 		}
 	}
+	
+	fmt.Printf("DEBUG: totalAlcohol=%.1f, totalMl=%d\n", totalAlcohol, totalMl)
 
 	// 適量チェック
 	var emoji string
