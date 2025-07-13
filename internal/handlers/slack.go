@@ -145,13 +145,15 @@ func (h *SlackHandler) handleDrinkRecord(command slack.SlashCommand, config Drin
 	}
 
 	// データベースに記録
-	_, err = h.drinkService.RecordDrink(ctx, int64(user.ID), config.Name, int64(amountMl), config.AlcoholPercentage)
+	record, err := h.drinkService.RecordDrink(ctx, int64(user.ID), config.Name, int64(amountMl), config.AlcoholPercentage)
 	if err != nil {
 		fmt.Printf("DEBUG: RecordDrink error: %v\n", err)
 		return &slack.Msg{
 			Text: "記録の保存に失敗しました。",
 		}
 	}
+	fmt.Printf("DEBUG: RecordDrink success: ID=%d, UserID=%d, DrinkType=%s, AmountML=%d\n", 
+		record.ID, record.UserID, record.DrinkType, record.AmountML)
 
 	// 今日の合計を取得
 	totalAlcohol, totalMl, err := h.drinkService.GetTodayTotalAlcohol(ctx, int64(user.ID))
