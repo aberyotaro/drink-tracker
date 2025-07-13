@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/aberyotaro/drink-tracker/models"
@@ -119,13 +120,22 @@ func (ds *DrinkService) GetTodayTotalAlcohol(ctx context.Context, userID int64) 
 		return 0, 0, err
 	}
 
+	// デバッグ用：クエリとパラメータをログ出力
+	fmt.Printf("DEBUG SQL: %s\n", sqlQuery)
+	fmt.Printf("DEBUG Args: %v\n", args)
+	fmt.Printf("DEBUG Today: %s\n", today)
+
 	var totalAlcohol sql.NullFloat64
 	var totalMl sql.NullInt64
 
 	err = ds.db.QueryRowContext(ctx, sqlQuery, args...).Scan(&totalAlcohol, &totalMl)
 	if err != nil {
+		fmt.Printf("DEBUG QueryRow error: %v\n", err)
 		return 0, 0, err
 	}
+
+	fmt.Printf("DEBUG Raw results: totalAlcohol.Valid=%v, totalAlcohol.Float64=%v, totalMl.Valid=%v, totalMl.Int64=%v\n", 
+		totalAlcohol.Valid, totalAlcohol.Float64, totalMl.Valid, totalMl.Int64)
 
 	return totalAlcohol.Float64, totalMl.Int64, nil
 }
