@@ -64,10 +64,6 @@ func (h *SlackHandler) HandleSlashCommand(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Cannot read request body"})
 	}
 
-	// デバッグ用ログ
-	timestamp := c.Request().Header.Get("X-Slack-Request-Timestamp")
-	signature := c.Request().Header.Get("X-Slack-Signature")
-	fmt.Printf("DEBUG: timestamp=%s, signature=%s, signingSecret_len=%d\n", timestamp, signature, len(h.signingSecret))
 
 	if !h.verifySlackRequest(c.Request(), body) {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid signature"})
@@ -78,7 +74,6 @@ func (h *SlackHandler) HandleSlashCommand(c echo.Context) error {
 
 	command, err := slack.SlashCommandParse(c.Request())
 	if err != nil {
-		fmt.Printf("DEBUG: SlashCommandParse error: %v\n", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Cannot parse slash command"})
 	}
 
@@ -111,6 +106,8 @@ func (h *SlackHandler) processDrinkCommand(command slack.SlashCommand) *slack.Ms
 		return h.handleStatsRequest(amount)
 	case "help":
 		return h.handleHelpRequest()
+	case "reset":
+		return h.handleResetRequest(command)
 	default:
 		drinkConfigs := h.getDrinkConfigs()
 		if config, exists := drinkConfigs[drinkType]; exists {
@@ -145,26 +142,20 @@ func (h *SlackHandler) handleDrinkRecord(command slack.SlashCommand, config Drin
 	}
 
 	// データベースに記録
-	record, err := h.drinkService.RecordDrink(ctx, int64(user.ID), config.Name, int64(amountMl), config.AlcoholPercentage)
+	_, err = h.drinkService.RecordDrink(ctx, int64(user.ID), config.Name, int64(amountMl), config.AlcoholPercentage)
 	if err != nil {
-		fmt.Printf("DEBUG: RecordDrink error: %v\n", err)
 		return &slack.Msg{
 			Text: "記録の保存に失敗しました。",
 		}
 	}
-	fmt.Printf("DEBUG: RecordDrink success: ID=%d, UserID=%d, DrinkType=%s, AmountML=%d\n", 
-		record.ID, record.UserID, record.DrinkType, record.AmountML)
 
 	// 今日の合計を取得
 	totalAlcohol, totalMl, err := h.drinkService.GetTodayTotalAlcohol(ctx, int64(user.ID))
 	if err != nil {
-		fmt.Printf("DEBUG: GetTodayTotalAlcohol error: %v\n", err)
 		return &slack.Msg{
 			Text: "統計情報の取得に失敗しました。",
 		}
 	}
-	
-	fmt.Printf("DEBUG: totalAlcohol=%.1f, totalMl=%d\n", totalAlcohol, totalMl)
 
 	// 適量チェック
 	var emoji string
@@ -203,7 +194,38 @@ func (h *SlackHandler) handleHelpRequest() *slack.Msg {
 			"`/drink hi` または `/drink highball` - ハイボール350mlを記録\n" +
 			"`/drink hi 500` - ハイボール500mlを記録\n" +
 			"`/drink stats` - 統計表示（開発中）\n" +
+			"`/drink reset` - 今日の飲酒記録をリセット\n" +
 			"`/drink help` - このヘルプを表示",
+	}
+}
+
+func (h *SlackHandler) handleResetRequest(command slack.SlashCommand) *slack.Msg {
+	ctx := context.Background()
+
+	// ユーザーを取得または作成
+	user, err := h.userService.GetOrCreateUser(ctx, command.UserID, command.TeamID)
+	if err != nil {
+		return &slack.Msg{
+			Text: "ユーザー情報の取得に失敗しました。",
+		}
+	}
+
+	// 今日の記録を削除
+	deletedCount, err := h.drinkService.DeleteTodayDrinks(ctx, int64(user.ID))
+	if err != nil {
+		return &slack.Msg{
+			Text: "リセットに失敗しました。",
+		}
+	}
+
+	if deletedCount == 0 {
+		return &slack.Msg{
+			Text: "🔄 今日の飲酒記録はありませんでした。",
+		}
+	}
+
+	return &slack.Msg{
+		Text: fmt.Sprintf("🔄 今日の飲酒記録を削除しました。（削除した記録: %d件）", deletedCount),
 	}
 }
 

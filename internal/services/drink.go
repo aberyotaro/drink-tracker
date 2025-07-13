@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/aberyotaro/drink-tracker/models"
@@ -62,12 +61,15 @@ func (ds *DrinkService) RecordDrink(ctx context.Context, userID int64, drinkType
 }
 
 func (ds *DrinkService) GetTodayDrinks(ctx context.Context, userID int64) ([]*models.DrinkRecord, error) {
-	today := time.Now().UTC().Format("2006-01-02")
+	// Use datetime range instead of string parsing
+	now := time.Now().UTC()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	endOfDay := startOfDay.Add(24 * time.Hour)
 
-	// BobのRAW SQL機能を使用してstrftime関数を含むクエリを構築
+	// BobのRAW SQL機能を使用して日付範囲クエリを構築
 	query := models.DrinkRecords.Query(
 		models.SelectWhere.DrinkRecords.UserID.EQ(int32(userID)),
-		sm.Where(sqlite.Raw("strftime('%Y-%m-%d', recorded_at) = ?", today)),
+		sm.Where(sqlite.Raw("recorded_at >= ? AND recorded_at < ?", startOfDay.Format("2006-01-02 15:04:05.999999999 -0700 MST"), endOfDay.Format("2006-01-02 15:04:05.999999999 -0700 MST"))),
 		sm.OrderBy(models.DrinkRecordColumns.RecordedAt).Desc(),
 	)
 
@@ -103,7 +105,10 @@ func (ds *DrinkService) GetTodayDrinks(ctx context.Context, userID int64) ([]*mo
 }
 
 func (ds *DrinkService) GetTodayTotalAlcohol(ctx context.Context, userID int64) (float64, int64, error) {
-	today := time.Now().UTC().Format("2006-01-02")
+	// Use datetime range instead of string parsing
+	now := time.Now().UTC()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	// BobのRAW SQL機能を使用して集計クエリを構築
 	query := models.DrinkRecords.Query(
@@ -112,7 +117,7 @@ func (ds *DrinkService) GetTodayTotalAlcohol(ctx context.Context, userID int64) 
 			sqlite.Raw("COALESCE(SUM(amount_ml), 0) as total_ml"),
 		),
 		models.SelectWhere.DrinkRecords.UserID.EQ(int32(userID)),
-		sm.Where(sqlite.Raw("strftime('%Y-%m-%d', recorded_at) = ?", today)),
+		sm.Where(sqlite.Raw("recorded_at >= ? AND recorded_at < ?", startOfDay.Format("2006-01-02 15:04:05.999999999 -0700 MST"), endOfDay.Format("2006-01-02 15:04:05.999999999 -0700 MST"))),
 	)
 
 	sqlQuery, args, err := query.Build(ctx)
@@ -120,38 +125,39 @@ func (ds *DrinkService) GetTodayTotalAlcohol(ctx context.Context, userID int64) 
 		return 0, 0, err
 	}
 
-	// デバッグ用：クエリとパラメータをログ出力
-	fmt.Printf("DEBUG SQL: %s\n", sqlQuery)
-	fmt.Printf("DEBUG Args: %v\n", args)
-	fmt.Printf("DEBUG Today: %s\n", today)
-
-	// 実際に保存されているデータを確認
-	checkQuery := "SELECT id, user_id, recorded_at, strftime('%Y-%m-%d', recorded_at) as record_date FROM drink_records WHERE user_id = ? ORDER BY id DESC LIMIT 5"
-	rows, err := ds.db.QueryContext(ctx, checkQuery, int32(userID))
-	if err == nil {
-		fmt.Printf("DEBUG Recent records:\n")
-		for rows.Next() {
-			var id, userId int32
-			var recordedAt sql.NullTime
-			var recordDate sql.NullString
-			if err := rows.Scan(&id, &userId, &recordedAt, &recordDate); err == nil {
-				fmt.Printf("  ID=%d, UserID=%d, RecordedAt=%v, Date=%s\n", id, userId, recordedAt.Time, recordDate.String)
-			}
-		}
-		rows.Close()
-	}
 
 	var totalAlcohol sql.NullFloat64
 	var totalMl sql.NullInt64
 
 	err = ds.db.QueryRowContext(ctx, sqlQuery, args...).Scan(&totalAlcohol, &totalMl)
 	if err != nil {
-		fmt.Printf("DEBUG QueryRow error: %v\n", err)
 		return 0, 0, err
 	}
 
-	fmt.Printf("DEBUG Raw results: totalAlcohol.Valid=%v, totalAlcohol.Float64=%v, totalMl.Valid=%v, totalMl.Int64=%v\n", 
-		totalAlcohol.Valid, totalAlcohol.Float64, totalMl.Valid, totalMl.Int64)
-
 	return totalAlcohol.Float64, totalMl.Int64, nil
+}
+
+func (ds *DrinkService) DeleteTodayDrinks(ctx context.Context, userID int64) (int, error) {
+	// Use datetime range for today
+	now := time.Now().UTC()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	// Use raw SQL for deletion since Bob's delete API is complex
+	deleteSQL := "DELETE FROM drink_records WHERE user_id = ? AND recorded_at >= ? AND recorded_at < ?"
+	result, err := ds.db.ExecContext(ctx, deleteSQL, 
+		int32(userID), 
+		startOfDay.Format("2006-01-02 15:04:05.999999999 -0700 MST"), 
+		endOfDay.Format("2006-01-02 15:04:05.999999999 -0700 MST"))
+
+	if err != nil {
+		return 0, err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(rowsAffected), nil
 }
