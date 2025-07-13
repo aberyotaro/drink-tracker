@@ -19,7 +19,7 @@ func NewDrinkService(db *sql.DB) *DrinkService {
 }
 
 func (ds *DrinkService) RecordDrink(ctx context.Context, userID int64, drinkType string, amountMl int64, alcoholPercentage float64) (*models.DrinkRecord, error) {
-	now := time.Now()
+	now := time.Now().UTC()
 
 	// BobのInsertクエリビルダーを使用
 	setter := &models.DrinkRecordSetter{
@@ -61,9 +61,7 @@ func (ds *DrinkService) RecordDrink(ctx context.Context, userID int64, drinkType
 }
 
 func (ds *DrinkService) GetTodayDrinks(ctx context.Context, userID int64) ([]*models.DrinkRecord, error) {
-	// JSTで今日の日付を取得
-	jst, _ := time.LoadLocation("Asia/Tokyo")
-	today := time.Now().In(jst).Format("2006-01-02")
+	today := time.Now().UTC().Format("2006-01-02")
 
 	// BobのRAW SQL機能を使用してDATE関数を含むクエリを構築
 	query := models.DrinkRecords.Query(
@@ -104,9 +102,7 @@ func (ds *DrinkService) GetTodayDrinks(ctx context.Context, userID int64) ([]*mo
 }
 
 func (ds *DrinkService) GetTodayTotalAlcohol(ctx context.Context, userID int64) (float64, int64, error) {
-	// JSTで今日の日付を取得
-	jst, _ := time.LoadLocation("Asia/Tokyo")
-	today := time.Now().In(jst).Format("2006-01-02")
+	today := time.Now().UTC().Format("2006-01-02")
 
 	// BobのRAW SQL機能を使用して集計クエリを構築
 	query := models.DrinkRecords.Query(
