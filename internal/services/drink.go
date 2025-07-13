@@ -64,10 +64,10 @@ func (ds *DrinkService) RecordDrink(ctx context.Context, userID int64, drinkType
 func (ds *DrinkService) GetTodayDrinks(ctx context.Context, userID int64) ([]*models.DrinkRecord, error) {
 	today := time.Now().UTC().Format("2006-01-02")
 
-	// BobのRAW SQL機能を使用してDATE関数を含むクエリを構築
+	// BobのRAW SQL機能を使用してstrftime関数を含むクエリを構築
 	query := models.DrinkRecords.Query(
 		models.SelectWhere.DrinkRecords.UserID.EQ(int32(userID)),
-		sm.Where(sqlite.Raw("DATE(recorded_at) = ?", today)),
+		sm.Where(sqlite.Raw("strftime('%Y-%m-%d', recorded_at) = ?", today)),
 		sm.OrderBy(models.DrinkRecordColumns.RecordedAt).Desc(),
 	)
 
@@ -112,7 +112,7 @@ func (ds *DrinkService) GetTodayTotalAlcohol(ctx context.Context, userID int64) 
 			sqlite.Raw("COALESCE(SUM(amount_ml), 0) as total_ml"),
 		),
 		models.SelectWhere.DrinkRecords.UserID.EQ(int32(userID)),
-		sm.Where(sqlite.Raw("DATE(recorded_at) = ?", today)),
+		sm.Where(sqlite.Raw("strftime('%Y-%m-%d', recorded_at) = ?", today)),
 	)
 
 	sqlQuery, args, err := query.Build(ctx)
@@ -126,7 +126,7 @@ func (ds *DrinkService) GetTodayTotalAlcohol(ctx context.Context, userID int64) 
 	fmt.Printf("DEBUG Today: %s\n", today)
 
 	// 実際に保存されているデータを確認
-	checkQuery := "SELECT id, user_id, recorded_at, DATE(recorded_at) as record_date FROM drink_records WHERE user_id = ? ORDER BY id DESC LIMIT 5"
+	checkQuery := "SELECT id, user_id, recorded_at, strftime('%Y-%m-%d', recorded_at) as record_date FROM drink_records WHERE user_id = ? ORDER BY id DESC LIMIT 5"
 	rows, err := ds.db.QueryContext(ctx, checkQuery, int32(userID))
 	if err == nil {
 		fmt.Printf("DEBUG Recent records:\n")
