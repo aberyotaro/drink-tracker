@@ -61,7 +61,9 @@ func (ds *DrinkService) RecordDrink(ctx context.Context, userID int64, drinkType
 }
 
 func (ds *DrinkService) GetTodayDrinks(ctx context.Context, userID int64) ([]*models.DrinkRecord, error) {
-	today := time.Now().Format("2006-01-02")
+	// JSTで今日の日付を取得
+	jst, _ := time.LoadLocation("Asia/Tokyo")
+	today := time.Now().In(jst).Format("2006-01-02")
 
 	// BobのRAW SQL機能を使用してDATE関数を含むクエリを構築
 	query := models.DrinkRecords.Query(
@@ -102,7 +104,9 @@ func (ds *DrinkService) GetTodayDrinks(ctx context.Context, userID int64) ([]*mo
 }
 
 func (ds *DrinkService) GetTodayTotalAlcohol(ctx context.Context, userID int64) (float64, int64, error) {
-	today := time.Now().Format("2006-01-02")
+	// JSTで今日の日付を取得
+	jst, _ := time.LoadLocation("Asia/Tokyo")
+	today := time.Now().In(jst).Format("2006-01-02")
 
 	// BobのRAW SQL機能を使用して集計クエリを構築
 	query := models.DrinkRecords.Query(
