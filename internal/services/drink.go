@@ -125,6 +125,22 @@ func (ds *DrinkService) GetTodayTotalAlcohol(ctx context.Context, userID int64) 
 	fmt.Printf("DEBUG Args: %v\n", args)
 	fmt.Printf("DEBUG Today: %s\n", today)
 
+	// 実際に保存されているデータを確認
+	checkQuery := "SELECT id, user_id, recorded_at, DATE(recorded_at) as record_date FROM drink_records WHERE user_id = ? ORDER BY id DESC LIMIT 5"
+	rows, err := ds.db.QueryContext(ctx, checkQuery, int32(userID))
+	if err == nil {
+		fmt.Printf("DEBUG Recent records:\n")
+		for rows.Next() {
+			var id, userId int32
+			var recordedAt sql.NullTime
+			var recordDate sql.NullString
+			if err := rows.Scan(&id, &userId, &recordedAt, &recordDate); err == nil {
+				fmt.Printf("  ID=%d, UserID=%d, RecordedAt=%v, Date=%s\n", id, userId, recordedAt.Time, recordDate.String)
+			}
+		}
+		rows.Close()
+	}
+
 	var totalAlcohol sql.NullFloat64
 	var totalMl sql.NullInt64
 
