@@ -73,8 +73,12 @@ func (h *SlackHandler) HandleSlashCommand(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid signature"})
 	}
 
+	// Body を再設定（SlashCommandParse 用）
+	c.Request().Body = io.NopCloser(strings.NewReader(string(body)))
+
 	command, err := slack.SlashCommandParse(c.Request())
 	if err != nil {
+		fmt.Printf("DEBUG: SlashCommandParse error: %v\n", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Cannot parse slash command"})
 	}
 
