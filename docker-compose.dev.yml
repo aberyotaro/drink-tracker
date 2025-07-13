@@ -1,0 +1,21 @@
+services:
+  drink-tracker:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_PATH=/data/drink_tracker.db
+      - PORT=8080
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - sqlite_data:/data
+      - /app/tmp
+    restart: unless-stopped
+    working_dir: /app
+
+volumes:
+  sqlite_data:

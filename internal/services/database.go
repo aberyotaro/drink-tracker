@@ -24,8 +24,11 @@ func NewDatabaseService(dbPath string) (*DatabaseService, error) {
 
 	service := &DatabaseService{DB: db}
 
-	if err := service.runMigrations(); err != nil {
-		return nil, err
+	// 環境変数でマイグレーション実行を制御
+	if os.Getenv("AUTO_MIGRATE") == "true" {
+		if err := service.runMigrations(); err != nil {
+			return nil, err
+		}
 	}
 
 	return service, nil

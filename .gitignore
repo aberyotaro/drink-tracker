@@ -21,6 +21,10 @@ server
 # Docker
 .dockerignore
 
+# Air
+tmp/
+build-errors.log
+
 # OS
 .DS_Store
 Thumbs.db
